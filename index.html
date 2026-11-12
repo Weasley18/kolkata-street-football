@@ -151,7 +151,6 @@ kbd{font:inherit;font-weight:600;color:var(--plaster);min-width:1.75em;text-alig
           <div class="modes">
             <button class="btn" id="btnCpu" type="button">Player vs CPU</button>
             <button class="btn alt" id="btnFp" type="button">First person</button>
-            <button class="btn alt" id="btnNet" type="button">Play online</button>
           </div>
           <div class="level" role="group" aria-label="CPU opponent difficulty" id="levels">
             <span class="who">CPU opponent</span>
@@ -380,7 +379,6 @@ document.querySelectorAll('#levels button').forEach(b => { b.onclick = () => set
 try { setLevel(localStorage.getItem('psf-level') || 'medium'); } catch (e) { setLevel('medium'); }
 $('btnCpu').onclick = () => startMatch('cpu');
 $('btnFp').onclick = () => startMatch('fp');
-$('btnNet').onclick = () => openOnline();
 $('btnAgain').onclick = () => startMatch(S.mode);
 $('btnMode').onclick = quit;
 $('btnResume').onclick = () => setPaused(false);

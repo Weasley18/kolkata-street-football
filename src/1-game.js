@@ -157,7 +157,6 @@ document.querySelectorAll('#levels button').forEach(b => { b.onclick = () => set
 try { setLevel(localStorage.getItem('psf-level') || 'medium'); } catch (e) { setLevel('medium'); }
 $('btnCpu').onclick = () => startMatch('cpu');
 $('btnFp').onclick = () => startMatch('fp');
-$('btnNet').onclick = () => openOnline();
 $('btnAgain').onclick = () => startMatch(S.mode);
 $('btnMode').onclick = quit;
 $('btnResume').onclick = () => setPaused(false);

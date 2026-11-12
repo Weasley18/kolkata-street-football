@@ -22,7 +22,6 @@ First team to 5 goals wins.
 
 - **Player vs CPU**: side-on camera. You play whichever of your four outfielders has the ball or is nearest it; your keeper and the other three look after themselves.
 - **First person**: you see through one kid's eyes and stay as that kid. Everyone else is CPU.
-- **Play online**: two players on two devices, each with four CPU teammates. This mode uses the `room` capability that Claude gives its published artifacts, so it only works when the page is opened as a Claude artifact shared between the two players. Opened as a plain file or from GitHub Pages, the button reports that online play is unavailable.
 
 The CPU opponent has three levels, Easy, Medium and Hard, chosen on the start screen.
 
@@ -37,11 +36,13 @@ The CPU opponent has three levels, Easy, Medium and Hard, chosen on the start sc
 
 ```
 index.html          the playable page (markup, styles, and the script below embedded)
-src/1-game.js       rules, input, physics, CPU players, online sync
+src/1-game.js       rules, input, physics, CPU players, online sync (see below)
 src/2-textures.js   procedural textures: shop fronts, the painted wall, the court
 src/3-scene.js      three.js scene, characters, animation, cameras, main loop
 build.sh            re-embeds src/ into index.html after an edit
 ```
+
+The online two-player code is still in `src/1-game.js`, but the mode has no button on the start screen: it needs the connection that Claude gives its published artifacts, so it cannot work on an ordinary web host.
 
 The three source files are one script split for reading: they share a single scope and are joined in order by `build.sh`.
 
