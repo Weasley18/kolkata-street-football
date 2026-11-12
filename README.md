@@ -13,7 +13,7 @@ First team to 5 goals wins.
 | | Keys |
 |---|---|
 | Move | `W` `A` `S` `D` or the arrow keys |
-| Shoot, or tackle when you don't have the ball | `Space` (or `Enter`) |
+| Shoot at the opponents' goal (whichever way you face), or tackle when you don't have the ball | `Space` (or `Enter`) |
 | Pass to the teammate you are facing | `F` (or right `Shift`) |
 | Pause | `Esc` |
 | First person | `W` `A` `S` `D` run and sidestep, `←` `→` (or `Q` `E`) turn; click the court to look with the mouse |

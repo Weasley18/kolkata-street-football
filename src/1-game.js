@@ -450,18 +450,13 @@ function strike(p, dx, dy, power, lift, far) {
   return true;
 }
 function airKick(p) { if (p.kickAnim <= 0) { p.kickAnim = KICK_ANIM; p.kc++; } }
-/* Shoot: the way the kid faces, bent onto the goal if it is roughly in front */
+/* Shoot: always at the opponents' goal, whichever way the kid is facing, aimed at the side the keeper is not covering */
 function shoot(p) {
-  const tm = TEAM[p.team]; let ax = p.fx, ay = p.fy;
-  const gx = tm.goalX - ball.x, far = Math.abs(gx);
-  if (ax * tm.dir > 0.3 && far < 640 && far > 20) {
-    const hitY = ball.y + ay / ax * gx, lim = GOAL.half * 0.72;
-    if (Math.abs(hitY - F.cy) > lim) {
-      const ty = F.cy + clamp(hitY - F.cy, -lim, lim), l = Math.hypot(gx, ty - ball.y) || 1, tx2 = gx / l, ty2 = (ty - ball.y) / l;
-      if (tx2 * ax + ty2 * ay > 0.76) { ax = tx2; ay = ty2; }           // within about 40° of the goal: bend it inside the post
-    }
-  }
-  return strike(p, ax, ay, SHOT, 210);
+  const tm = TEAM[p.team], keeper = P[TEAM[1 - p.team].gk];
+  const off = keeper.y - F.cy, side = Math.abs(off) > 6 ? -Math.sign(off) : (ball.y > F.cy ? -1 : 1);   // keeper central: go for the far post
+  const tx = tm.goalX + tm.dir * 10, ty = F.cy + side * GOAL.half * 0.62;
+  const dx = tx - ball.x, dy = ty - ball.y, l = Math.hypot(dx, dy) || 1;
+  return strike(p, dx / l, dy / l, SHOT, 210);
 }
 /* Pass: along the ground to the teammate, weighted for the distance; control goes with the ball */
 function passTarget(p) {                                                // the teammate you are facing, as long as the ball can get there
