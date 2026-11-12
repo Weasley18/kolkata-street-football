@@ -1,6 +1,6 @@
 # পাড়ার ফুটবল — Kolkata Street Football
 
-A 3D five-a-side street football game set on a caged concrete court in a Kolkata neighbourhood (*para*): old houses with louvred shutters, a tea stall, a sweet shop, the para club, hand-painted wall writing in Bengali, a carrom board and a yellow taxi at the kerb.
+A 3D three-a-side street football game set on a caged concrete court in a Kolkata neighbourhood (*para*): old houses with louvred shutters, a tea stall, a sweet shop, the para club, hand-painted wall writing in Bengali, a carrom board and a yellow taxi at the kerb.
 
 It is a single web page. Everything is drawn in code: there are no image or model files.
 
@@ -20,7 +20,7 @@ First team to 5 goals wins.
 
 ## Modes
 
-- **Player vs CPU**: side-on camera. You play whichever of your four outfielders has the ball or is nearest it; your keeper and the other three look after themselves.
+- **Player vs CPU**: side-on camera. You play whichever of your two outfielders has the ball or is nearest it; your keeper and the other outfielder look after themselves.
 - **First person**: you see through one kid's eyes and stay as that kid. Everyone else is CPU.
 
 The CPU opponent has three levels, Easy, Medium and Hard, chosen on the start screen.
@@ -30,7 +30,7 @@ The CPU opponent has three levels, Easy, Medium and Hard, chosen on the start sc
 - The ball stays at a kid's feet once they reach it. Run into the carrier's ball from the front or side to win it or knock it loose; a carrier can shield it with their body.
 - A hard shot comes off a defender instead of being trapped. Keepers hold what they can reach and parry the rest.
 - The ball flies, bounces and loses pace on each bounce; the court is a cage, so it never leaves play.
-- CPU players hold a 2-2 shape in front of the keeper: one presses the ball, one back covers the line to goal, the other marks, and the forwards alternate between holding the width and slanting runs in behind.
+- Each side is a keeper, a back and a forward. Whichever CPU outfielder is nearer the ball presses it; the back otherwise covers the line between the ball and his goal, and the forward alternates between holding the width and slanting runs in behind.
 
 ## Code
 

@@ -6,7 +6,7 @@ const TAU = Math.PI * 2;
 const F = { L: 150, R: 1550, T: 236, B: 856 };          // playing area in ground coords (x across, y towards the side camera)
 F.cx = (F.L + F.R) / 2; F.cy = (F.T + F.B) / 2;
 const GOAL = { half: 84, depth: 44, post: 5, h: 100 };
-const NT = 5, NP = 10, FPI = 3;                         // five a side; in each five, slot 0 keeps goal; in first person you are kid 3
+const NT = 3, NP = 6, FPI = 2;                          // three a side: slot 0 keeps goal, slot 1 is the back, slot 2 the forward; in first person you are kid 2
 const GY1 = F.cy - GOAL.half, GY2 = F.cy + GOAL.half;
 const PR = 17, BR = 9;                                   // player / ball collision radius
 const STEP = 1 / 120;
@@ -25,7 +25,7 @@ const GRAV = 900, AIR_DRAG = 0.22, ROLL_DRAG = 0.9, ROLL_FRIC = 46, BOUNCE = 0.5
 const TRAP_SPEED = 440;                                  // a ball arriving faster than this cannot be trapped, it comes off the body
 const WIN = 5;
 
-/* ten original kids: a keeper, two at the back and two up front on each side */
+/* original kids: a keeper, a back and a forward on each side (the first NP looks are used) */
 const LOOKS = [
   { skin: '#9a6845', hair: '#120e0b', style: 'crop', shoe: '#2a2a2e', vest: false, s: 1.04 },
   { skin: '#8f5d3b', hair: '#120e0b', style: 'mop',  shoe: null,      vest: true,  s: 0.95 },
@@ -39,23 +39,22 @@ const LOOKS = [
   { skin: '#8f5d3b', hair: '#0e0b09', style: 'crop', shoe: '#2a2a2e', vest: true,  s: 1.0 }
 ];
 const KIT = [
-  { jersey: '#c8302a', trim: '#f2c230', gkJersey: '#2d3440', gkTrim: '#f2c230', shorts: ['#1c1c20', '#1c1c20', '#b39a68', '#1c1c20', '#b39a68'], nums: ['1', '4', '5', '10', '7'] },
-  { jersey: '#1c7a4c', trim: '#7d1f2e', gkJersey: '#d9731c', gkTrim: '#22304a', shorts: ['#22304a', '#efece2', '#22304a', '#efece2', '#22304a'], nums: ['1', '3', '6', '9', '8'] }
+  { jersey: '#c8302a', trim: '#f2c230', gkJersey: '#2d3440', gkTrim: '#f2c230', shorts: ['#1c1c20', '#b39a68', '#1c1c20'], nums: ['1', '4', '10'] },
+  { jersey: '#1c7a4c', trim: '#7d1f2e', gkJersey: '#d9731c', gkTrim: '#22304a', shorts: ['#22304a', '#efece2', '#22304a'], nums: ['1', '6', '9'] }
 ];
-const KIDS = LOOKS.map((l, i) => { const k = KIT[i < NT ? 0 : 1], sl = i % NT, gk = sl === 0;
+const KIDS = [0, 1, 3, 5, 6, 8].slice(0, NP).map(j => LOOKS[j]).map((l, i) => { const k = KIT[i < NT ? 0 : 1], sl = i % NT, gk = sl === 0;
   return Object.assign({}, l, { gk, num: k.nums[sl], jersey: gk ? k.gkJersey : k.jersey, trim: gk ? k.gkTrim : k.trim, shorts: k.shorts[sl], vest: gk ? false : l.vest }); });
 
 /* ───────────── state ───────────── */
 const S = { mode: null, phase: 'menu', paused: false, hold: false, score: [0, 0], scorer: 0, timer: 0, clock: 0, demo: false, still: 0, ax: 0, ay: 0 };
 const TEAM = [
-  { dir: 1, goalX: F.R, ownX: F.L, players: [0, 1, 2, 3, 4], gk: 0, ctrl: 3, chaser: 3, sw: 0, recv: 0 },
-  { dir: -1, goalX: F.L, ownX: F.R, players: [5, 6, 7, 8, 9], gk: 5, ctrl: 8, chaser: 8, sw: 0, recv: 0 }
+  { dir: 1, goalX: F.R, ownX: F.L, players: [0, 1, 2], gk: 0, ctrl: 2, chaser: 2, sw: 0, recv: 0 },
+  { dir: -1, goalX: F.L, ownX: F.R, players: [3, 4, 5], gk: 3, ctrl: 5, chaser: 5, sw: 0, recv: 0 }
 ];
-const HOME0 = [[F.L + 30, F.cy], [F.L + 330, F.cy - 135], [F.L + 330, F.cy + 135], [F.cx - 150, F.cy - 56], [F.cx - 200, F.cy + 78]];
-const HOME = [...HOME0, ...[0, 2, 1, 4, 3].map(k => [2 * F.cx - HOME0[k][0], 2 * F.cy - HOME0[k][1]])];   // the other five mirror these through the centre spot
+const HOME0 = [[F.L + 30, F.cy], [F.L + 340, F.cy + 95], [F.cx - 160, F.cy - 50]];
+const HOME = [...HOME0, ...HOME0.map(([x, y]) => [2 * F.cx - x, 2 * F.cy - y])];   // the other three mirror these through the centre spot
 /* where each outfielder likes to be: depth up the pitch (0 own line, 1 theirs), side (-1 far touchline, 1 near), and how far it follows the ball */
-const SLOT = [null, { d: 0.25, l: -0.46, push: 0.5, min: 0.1, max: 0.62, shift: 0.32 }, { d: 0.25, l: 0.46, push: 0.5, min: 0.1, max: 0.62, shift: 0.32 },
-  { d: 0.55, l: -0.4, push: 0.55, min: 0.3, max: 0.88, shift: 0.2 }, { d: 0.55, l: 0.4, push: 0.55, min: 0.3, max: 0.88, shift: 0.2 }];
+const SLOT = [null, { d: 0.27, l: 0.22, push: 0.55, min: 0.1, max: 0.66, shift: 0.45, back: true }, { d: 0.58, l: -0.36, push: 0.55, min: 0.3, max: 0.9, shift: 0.3 }];
 const mkPlayer = i => ({ i, team: i < NT ? 0 : 1, slot: i % NT, gk: i % NT === 0, x: 0, y: 0, vx: 0, vy: 0, fx: 1, fy: 0, ang: 0, phase: 0, kickCd: 0, kickAnim: 0, noCap: 0, kc: 0 });
 const P = Array.from({ length: NP }, (_, i) => mkPlayer(i));
 const ball = { x: F.cx, y: F.cy, vx: 0, vy: 0, h: 0, vh: 0, owner: -1, protect: 0 };
@@ -97,10 +96,10 @@ function resetPositions() {
     p.x = HOME[i][0]; p.y = HOME[i][1]; p.vx = p.vy = 0;
     p.fx = TEAM[p.team].dir; p.fy = 0; p.ang = p.team ? Math.PI : 0; p.kickCd = 0; p.kickAnim = 0; p.noCap = 0; p.phase = 0;
   });
-  TEAM.forEach(t => { t.ctrl = t.chaser = t.players[3]; t.sw = 0; t.recv = 0; });
+  TEAM.forEach(t => { t.ctrl = t.chaser = t.players[NT - 1]; t.sw = 0; t.recv = 0; });
   Object.assign(ball, { x: F.cx, y: F.cy, vx: 0, vy: 0, h: 0, vh: 0, owner: -1, protect: 0 });
   kickBuf[0] = kickBuf[1] = passBuf[0] = passBuf[1] = 0;
-  AI.forEach((a, i) => { a.t = (i % 5) * 0.02; a.flank = 0; a.kick = null; a.held = 0; a.jockey = false; a.dive = false; a.runT = i * 0.37 % 2; a.cut = i % 2 === 0; a.dir = P[i].ang; a.tx = P[i].x; a.ty = P[i].y; });
+  AI.forEach((a, i) => { a.t = (i % NT) * 0.02; a.flank = 0; a.kick = null; a.held = 0; a.jockey = false; a.dive = false; a.runT = i * 0.37 % 2; a.cut = i % 2 === 0; a.dir = P[i].ang; a.tx = P[i].x; a.ty = P[i].y; });
   FP.yaw = 0; FP.pitch = 0.3; FP.look = 0;
   S.still = 0; S.ax = ball.x; S.ay = ball.y;
 }
@@ -228,7 +227,7 @@ function pickRoles(tm, dt) {
     if (ours >= 0 && ours !== tm.gk) { if (tm.ctrl !== ours) { tm.ctrl = ours; tm.sw = 0.3; } }
     else if (tm.sw <= 0) { const n = nearest(tm.ctrl, 40); if (n !== tm.ctrl) { tm.ctrl = n; tm.sw = 0.45; } }
     tm.chaser = tm.ctrl;
-  } else tm.chaser = keeperHas ? -1 : (ours >= 0 ? ours : nearest(tm.chaser < 0 ? tm.players[3] : tm.chaser, 34));   // nobody harries a keeper with the ball in his hands
+  } else tm.chaser = keeperHas ? -1 : (ours >= 0 ? ours : nearest(tm.chaser < 0 ? tm.players[NT - 1] : tm.chaser, 34));   // nobody harries a keeper with the ball in his hands
 }
 const others = team => TEAM[team ? 0 : 1].players;
 function oppNear(team, to) {                                            // nearest opposing outfielder
@@ -259,7 +258,7 @@ function bestPass(p, tm, anyway) {
 }
 /* where an outfielder without the ball should be: his place in the shape, a slanting run, or goal-side of the kid he is marking */
 function offBall(p, a, tm) {
-  const b = ball, atk = tm.dir, s = SLOT[p.slot], L = F.R - F.L, Hh = (F.B - F.T) / 2, fwd = p.slot >= 3;
+  const b = ball, atk = tm.dir, s = SLOT[p.slot], L = F.R - F.L, Hh = (F.B - F.T) / 2, fwd = !s.back;
   const adv = clamp((b.x - tm.ownX) * atk / L, 0, 1), poss = b.owner >= 0 && P[b.owner].team === p.team, theirs = b.owner >= 0 && !poss;
   let d = s.d + (adv - 0.5) * s.push + (poss ? 0.07 : theirs ? -0.05 : 0), l = s.l;
   if (fwd && poss && adv > 0.4) {                                        // alternately hold the width, then slant in behind the defence
@@ -269,10 +268,10 @@ function offBall(p, a, tm) {
   d = clamp(d, s.min, s.max);
   let x = tm.ownX + atk * d * L, y = F.cy + l * Hh * 0.82 + (b.y - F.cy) * s.shift;
   a.jockey = theirs;
-  if (theirs && !fwd) {                                                  // one of the two backs covers: he gets between the carrier and the goal, and steps in when the carrier arrives
-    const other = P[tm.players[p.slot === 1 ? 2 : 1]], gx = b.x - tm.ownX, gy = b.y - F.cy, gl = Math.hypot(gx, gy) || 1;
+  if (theirs && !fwd) {                                                  // a back covers: he gets between the carrier and the goal, and steps in when the carrier arrives
+    const ob = tm.players.find(i => i !== p.i && SLOT[P[i].slot] && SLOT[P[i].slot].back), other = ob === undefined ? null : P[ob], gx = b.x - tm.ownX, gy = b.y - F.cy, gl = Math.hypot(gx, gy) || 1;
     const off = q => Math.abs((q.x - tm.ownX) * gy - (q.y - F.cy) * gx) / gl + (tm.chaser === q.i ? 1e4 : 0);      // how far each back is from the carrier's line to goal
-    if (off(p) <= off(other) + (a.cover ? 40 : 0)) {
+    if (!other || off(p) <= off(other) + (a.cover ? 40 : 0)) {           // with two backs, the one nearer that line takes it
       a.cover = true;
       const d = clamp(gl * 0.36, 80, 280); x = tm.ownX + gx / gl * d; y = F.cy + gy / gl * d;
       if (dist(p, b) < 150) { x = b.x; y = b.y; }
