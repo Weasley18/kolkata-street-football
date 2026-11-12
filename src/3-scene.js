@@ -327,7 +327,7 @@ const CAM = { h: 965, back: 945, aim: -72, panX: 255, panZ: 70 };     // side vi
 function aimCamera(dt) {
   const fp = isFP() && S.phase !== 'menu', me = kids[FPI];
   if (fp !== camFP) {
-    camFP = fp; camera.fov = fp ? 100 : 30; camera.near = fp ? 2 : 200; camera.updateProjectionMatrix();
+    camFP = fp; applyView();
     ghost.m = ghost.m || new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
     for (const m of me.hide) { if (fp) { m.userData.mat = m.material; m.material = ghost.m; } else if (m.userData.mat) m.material = m.userData.mat; }   // in first person your own head and chest are unseen but still cast a shadow: you see your arms, legs and the ball
     fpGroup.visible = fp;
@@ -394,14 +394,23 @@ function render(now, dt) {
 }
 
 /* ───────────── layout ───────────── */
+/* The court fills whatever window it is in. The camera keeps the same sideways view it had at 16:9: a taller window sees more
+   above and below, a wider one more to the sides in the broadcast view; first person keeps its width of view and never stretches. */
+const view = { w: 16, h: 9 };
+function applyView() {
+  if (!camera) return;
+  const aspect = view.w / view.h, fp = !!camFP, base = fp ? 100 : 30;
+  const tanH = Math.tan(base * Math.PI / 360) * 16 / 9;                  // horizontal half-width of the 16:9 view
+  let fov = 2 * Math.atan(tanH / aspect) * 180 / Math.PI;
+  fov = fp ? clamp(fov, 60, 115) : clamp(Math.max(fov, base), base, 70);
+  camera.aspect = aspect; camera.fov = fov; camera.near = fp ? 2 : 200; camera.updateProjectionMatrix();
+}
 function fit() {
-  const cs = getComputedStyle(app);
-  const aw = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-  const ah = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-  const hudH = Math.round(clamp(ah * 0.085, 36, 62));
-  const w = Math.max(160, Math.floor(Math.min(aw, (ah - hudH) * 16 / 9))), h = Math.round(w * 9 / 16);
-  shell.style.width = w + 'px'; hud.style.height = hudH + 'px'; frameEl.style.height = h + 'px';
-  if (renderer) { renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.setSize(w, h, false); }
+  const ah = app.clientHeight, aw = app.clientWidth;
+  const hudH = Math.round(clamp(ah * 0.07, 36, 58));
+  hud.style.height = hudH + 'px';
+  view.w = Math.max(160, aw); view.h = Math.max(90, ah - hudH);
+  if (renderer) { renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.setSize(view.w, view.h, false); applyView(); }
 }
 addEventListener('resize', fit);
 if (window.ResizeObserver) new ResizeObserver(fit).observe(app);
