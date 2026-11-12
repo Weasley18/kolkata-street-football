@@ -351,6 +351,7 @@ function aimCamera(dt) {
     look.v = look.v || new THREE.Vector3();
     look.v.set(camera.position.x + fx * cp * 100, eye - Math.sin(pitch) * 100, camera.position.z + fy * cp * 100);
     camera.lookAt(look.v);
+    camera.rotateZ(-FP.turn * 0.028 * Math.min(1, Math.hypot(p.vx, p.vy) / 200));   // lean into the turn when running
     fx0 = p.x - F.cx; fz0 = p.y - F.cy;
   }
   fx0 = Math.round(fx0 / 16) * 16; fz0 = Math.round(fz0 / 16) * 16;     // the sun's shadow box moves with the view, in steps so shadows do not shimmer

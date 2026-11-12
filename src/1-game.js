@@ -62,7 +62,7 @@ const keys = new Set();
 const kickBuf = [0, 0], passBuf = [0, 0];
 const INPUT = [{ mx: 0, my: 0 }, { mx: 0, my: 0 }];        // movement asked for by each side's human
 const AI = P.map(() => ({ t: 0, tx: 0, ty: 0, mx: 0, my: 0, side: 0, flank: 0, held: 0, kick: null, dir: 0, jockey: false, runT: 0, cut: false, dive: false, lane: 0 }));
-const FP = { yaw: 0, pitch: 0.3, look: 0 };
+const FP = { yaw: 0, pitch: 0.3, look: 0, turn: 0 };
 let myTeam = 0;                                          // 1 only for the guest of an online match
 let seed = 987654321;
 const rnd = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
@@ -100,7 +100,7 @@ function resetPositions() {
   Object.assign(ball, { x: F.cx, y: F.cy, vx: 0, vy: 0, h: 0, vh: 0, owner: -1, protect: 0 });
   kickBuf[0] = kickBuf[1] = passBuf[0] = passBuf[1] = 0;
   AI.forEach((a, i) => { a.t = (i % NT) * 0.02; a.flank = 0; a.kick = null; a.held = 0; a.jockey = false; a.dive = false; a.runT = i * 0.37 % 2; a.cut = i % 2 === 0; a.dir = P[i].ang; a.tx = P[i].x; a.ty = P[i].y; });
-  FP.yaw = 0; FP.pitch = 0.3; FP.look = 0;
+  FP.yaw = 0; FP.pitch = 0.3; FP.look = 0; FP.turn = 0;
   S.still = 0; S.ax = ball.x; S.ay = ball.y;
 }
 function show(id, on) { $(id).hidden = !on; }
@@ -197,12 +197,20 @@ function localMove() {                                     // side view: screen 
   if (x && y) { x *= Math.SQRT1_2; y *= Math.SQRT1_2; }
   return { mx: x, my: y };
 }
-function fpMove(dt) {                                      // first person: WASD runs and sidesteps (so W+A is a slanting run), arrows or Q/E or the mouse turn
-  if (!playing()) return { mx: 0, my: 0, face: FP.yaw };
-  const fwd = (held('KeyW', 'ArrowUp') ? 1 : 0) - (held('KeyS', 'ArrowDown') ? 1 : 0), str = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0);
-  FP.yaw += ((held('ArrowRight', 'KeyE') ? 1 : 0) - (held('ArrowLeft', 'KeyQ') ? 1 : 0)) * 2.6 * dt;
+/* First person: one set of keys both moves and turns you. W runs the way you look and A/D steer, so turning while running carves a curve:
+   the turn builds up and eases off rather than snapping, it is quicker standing still than at a sprint or with the ball, and a hard turn at speed costs pace. */
+const TURN = { still: 3.4, sprint: 2.0, ball: 0.85, ramp: 9, carve: 0.22 };
+function fpMove(dt) {
+  if (!playing()) { FP.turn = 0; return { mx: 0, my: 0, face: FP.yaw }; }
+  const p = P[FPI], run = Math.min(1, Math.hypot(p.vx, p.vy) / MAX_SPEED);
+  const fwd = (held('KeyW', 'ArrowUp') ? 1 : 0) - (held('KeyS', 'ArrowDown') ? 1 : 0);
+  const steer = (held('KeyD', 'ArrowRight') ? 1 : 0) - (held('KeyA', 'ArrowLeft') ? 1 : 0), str = (keys.has('KeyE') ? 1 : 0) - (keys.has('KeyQ') ? 1 : 0);
+  const max = (TURN.still + (TURN.sprint - TURN.still) * run) * (ball.owner === FPI ? TURN.ball : 1);
+  FP.turn += (steer * max - FP.turn) * Math.min(1, dt * TURN.ramp);       // angular speed eases towards what the keys ask for
+  FP.yaw += FP.turn * dt;
   const cs = Math.cos(FP.yaw), sn = Math.sin(FP.yaw);
-  let mx = cs * fwd - sn * str, my = sn * fwd + cs * str; const l = Math.hypot(mx, my);
+  let f = fwd > 0 ? fwd * (1 - TURN.carve * Math.abs(FP.turn) / TURN.still * run) : fwd * 0.6;   // braking or backing off is slower than running
+  let mx = cs * f - sn * str * 0.8, my = sn * f + cs * str * 0.8; const l = Math.hypot(mx, my);
   if (l > 1) { mx /= l; my /= l; }
   return { mx, my, face: FP.yaw };
 }
