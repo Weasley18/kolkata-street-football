@@ -1,6 +1,7 @@
 /* ───────────── texture painting (2D canvas) ───────────── */
 const BN = '"Anek Bangla","Noto Sans Bengali","Nirmala UI","Kohinoor Bangla","Bangla MN",sans-serif';
 const BNB = '"Galada","Anek Bangla","Noto Sans Bengali","Nirmala UI","Kohinoor Bangla","Bangla MN",cursive';
+const EN = '"Anek Latin",system-ui,-apple-system,"Segoe UI",sans-serif', ENS = '"Galada","Anek Latin",cursive';
 const mul32 = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${n >> 8 & 255},${n & 255},${a})`; };
 const shade = (hex, d) => { const n = parseInt(hex.slice(1), 16), c = v => clamp(v + d, 0, 255); return `rgb(${c(n >> 16)},${c(n >> 8 & 255)},${c(n & 255)})`; };
@@ -140,7 +141,7 @@ function paintFacade(c) {
   door(g, 83, 94, 44, 56, '#2c5a66', rng);
   R(g, 74, 83, 62, 10, '#e9e4d6'); T(g, 'শান্তি নিবাস', 105, 88.5, 8, BN, '#2a2622', { w: 600 });
   R(g, 148, 83, 54, 11, '#1f4e8c'); g.strokeStyle = '#e8eef5'; g.lineWidth = 0.6; g.strokeRect(149, 84, 52, 9);
-  T(g, 'বকুলতলা লেন', 175, 89, 7.5, BN, '#f2f5f8', { w: 600, maxW: 48 });
+  T(g, 'BAKULTALA LANE', 175, 89, 6.4, EN, '#f2f5f8', { w: 800, maxW: 48 });
 
   /* 2 ─ tea stall */
   wallBase(g, 206, 226, '#cb9a8a', rng, 2);
@@ -150,9 +151,9 @@ function paintFacade(c) {
   const tg = g.createLinearGradient(0, 104, 0, 162); tg.addColorStop(0, 'rgba(0,0,0,.55)'); tg.addColorStop(1, 'rgba(90,60,30,.15)'); g.fillStyle = tg; g.fillRect(222, 104, 196, 58);
   R(g, 228, 124, 184, 2, '#5a4634');
   for (let k = 0; k < 9; k++) R(g, 232 + k * 20, 115, 12, 9, ['#c9b15a', '#a84a32', '#d8d2c0', '#6e8a4a'][k % 4]);
-  sign(g, 214, 82, 210, 21, '#e3b320', '#9c1f18', 'বাপির চায়ের দোকান', 16, BN, rng);
+  sign(g, 214, 82, 210, 21, '#e3b320', '#9c1f18', "BAPI'S TEA STALL", 15, EN, rng);
   R(g, 222, 142, 196, 26, '#6a482c'); R(g, 222, 142, 196, 2.5, '#8f6a45');
-  R(g, 232, 148, 108, 13, '#274a5c'); T(g, 'চা • বিস্কুট • ঘুগনি', 286, 155, 8.5, BN, '#f0e6c8', { w: 600, maxW: 100 });
+  R(g, 232, 148, 108, 13, '#274a5c'); T(g, 'TEA • BISCUIT • GHUGNI', 286, 155, 7.6, EN, '#f0e6c8', { w: 800, maxW: 100 });
   for (let k = 0; k < 4; k++) {                                         // biscuit jars
     const jx = 230 + k * 17; R(g, jx, 128, 13, 14, 'rgba(205,225,222,.45)'); R(g, jx + 1, 134, 11, 8, ['#b98545', '#8a5a2e', '#d2a55c', '#a06a38'][k]); R(g, jx - 0.5, 126, 14, 3, '#b3261e');
     R(g, jx + 1.5, 129, 1.5, 12, 'rgba(255,255,255,.5)');
@@ -190,7 +191,7 @@ function paintFacade(c) {
   shutterWin(g, 734, -14, 40, 77, rng); shutterWin(g, 820, -14, 40, 77, rng);
   balcony(g, 714, 166, [{ t: 'c', x: 786, c: '#c9d4dc', w: 24 }]);
   sign(g, 702, 83, 188, 23, '#ece7d8', '#1d3f7a', 'তরুণ সংঘ', 19, BNB, rng, { w: 400, border: '#1d3f7a', dx: -26, tw: 130 });
-  T(g, 'স্থাপিত ১৯৬২', 856, 95, 8, BN, '#8c2a20', { w: 600, maxW: 56 });
+  T(g, 'ESTD. 1962', 856, 95, 7.6, EN, '#8c2a20', { w: 800, maxW: 56 });
   R(g, 704, 110, 104, 58, '#3a3b3c'); R(g, 706, 112, 100, 56, '#8b9094');                   // roller shutter
   g.fillStyle = 'rgba(0,0,0,.22)'; for (let sy = 114; sy < 168; sy += 4) g.fillRect(706, sy, 100, 1.4);
   g.fillStyle = 'rgba(255,255,255,.14)'; for (let sy = 115.5; sy < 168; sy += 4) g.fillRect(706, sy, 100, 0.8);
@@ -209,7 +210,7 @@ function paintFacade(c) {
   const pg = g.createLinearGradient(0, 108, 0, 162); pg.addColorStop(0, 'rgba(255,230,180,.2)'); pg.addColorStop(1, 'rgba(0,0,0,.3)'); g.fillStyle = pg; g.fillRect(914, 108, 166, 54);
   const packs = ['#c8302a', '#f2c230', '#2d6fb5', '#3f8f4f', '#e7842c', '#d9d9d9', '#7a3f9a'];
   for (let row = 0; row < 3; row++) { R(g, 918, 121 + row * 11, 158, 1.5, '#6a5038'); for (let k = 0; k < 19; k++) R(g, 920 + k * 8.2, 113 + row * 11, 6.4, 8, packs[(k * 3 + row * 2) % packs.length]); }
-  sign(g, 910, 83, 174, 22, '#1f5c45', '#f2d14a', 'ভাই ভাই স্টোর্স', 17, BN, rng, { border: '#f2d14a' });
+  sign(g, 910, 83, 174, 22, '#1f5c45', '#f2d14a', 'BHAI BHAI STORES', 15, EN, rng, { border: '#f2d14a' });
   for (let k = 0; k < 8; k++) {                                         // hanging sachet strings
     const sx = 922 + k * 21.5; R(g, sx + 2.4, 108, 0.8, 30, '#d8d2c0');
     for (let q = 0; q < 5; q++) { R(g, sx, 110 + q * 5.8, 5.6, 5, packs[(k + q * 2) % packs.length]); R(g, sx, 110 + q * 5.8, 5.6, 1.2, 'rgba(255,255,255,.4)'); }
@@ -220,7 +221,7 @@ function paintFacade(c) {
   /* 6 ─ coaching centre */
   wallBase(g, 1092, 188, '#c3a777', rng, 3);
   for (const wx of [1126, 1214]) shutterWin(g, wx, -14, 38, 66, rng, '#3b5f73');
-  sign(g, 1116, 83, 154, 22, '#f1ede0', '#b3261e', 'সাফল্য কোচিং সেন্টার', 13.5, BN, rng, { border: '#1d3f7a' });
+  sign(g, 1116, 83, 154, 22, '#f1ede0', '#b3261e', 'SAFALYA COACHING CENTRE', 12, EN, rng, { border: '#1d3f7a' });
   door(g, 1148, 108, 44, 60, '#4a5f6e', rng);
   grillWin(g, 1214, 112, 42, 34);
   R(g, 1122, 120, 14, 22, '#b3261e'); R(g, 1122, 120, 14, 4, '#8e1c16'); R(g, 1125, 128, 8, 1.6, '#1a1210'); R(g, 1122, 142, 14, 2, 'rgba(0,0,0,.3)');   // letterbox
@@ -236,10 +237,10 @@ function paintWall(c) {
   R(g, X(0.29), 0, X(0.225), Hd, '#2a5d8f');                             // club's blue panel
   for (let i = 0; i < 42; i++) soft(g, rng() * Wd, rng() * Hd, 20 + rng() * 60, rng() < 0.6 ? '#2a221a' : '#fff4dc', 0.06 + rng() * 0.08);
   for (let i = 0; i < 240; i++) { const sx = rng() * Wd, len = 8 + rng() * 34; const gr = g.createLinearGradient(0, 0, 0, len); gr.addColorStop(0, 'rgba(38,32,26,.3)'); gr.addColorStop(1, 'rgba(38,32,26,0)'); g.fillStyle = gr; g.fillRect(sx, 0, 1 + rng() * 3, len); }
-  T(g, 'এখানে বিজ্ঞাপন মারিবেন না', X(0.145), 29, 27, BNB, '#1e1a16', { w: 400, a: 0.82, maxW: 330 });
-  T(g, 'তরুণ সংঘ পরিচালিত পাড়া ফুটবল প্রতিযোগিতা', X(0.4025), 29, 25, BNB, '#f1ead6', { w: 400, a: 0.9, maxW: X(0.21) });
+  T(g, 'STICK NO BILLS', X(0.145), 30, 26, EN, '#1e1a16', { w: 800, a: 0.82, maxW: 300 });
+  T(g, 'Tarun Sangha Para Football Cup', X(0.4025), 30, 28, ENS, '#f1ead6', { w: 400, a: 0.9, maxW: X(0.21) });
   T(g, 'রক্তদান শিবির • ২৬শে জানুয়ারি', X(0.605), 29, 22, BN, '#9c1f18', { w: 800, a: 0.8, maxW: 210 });
-  T(g, 'খেলার মাঠ পরিষ্কার রাখুন', X(0.755), 29, 21, BN, '#1f5c45', { w: 800, a: 0.82, maxW: 180 });
+  T(g, 'KEEP THE GROUND CLEAN', X(0.755), 30, 19, EN, '#1f5c45', { w: 800, a: 0.82, maxW: 190 });
   T(g, 'ফুটবল কোচিং • প্রতি রবিবার সকালে', X(0.905), 29, 19, BN, '#1d3f7a', { w: 800, a: 0.8, maxW: 210 });
   R(g, 22, 8, 22, 30, 'rgba(236,228,205,.7)'); R(g, X(0.7), 4, 16, 13, 'rgba(240,214,140,.5)');     // torn poster scraps
   brickPatch(g, X(0.275), 42, 11, rng); brickPatch(g, X(0.53), 12, 8, rng); brickPatch(g, X(0.845), 40, 10, rng); brickPatch(g, X(0.985), 14, 9, rng);

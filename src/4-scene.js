@@ -244,6 +244,7 @@ function buildScene() {
   const aw = quad([[fx(208), fh(100), FY + 1], [fx(430), fh(100), FY + 1], [fx(432), fh(116), FY + 44], [fx(206), fh(116), FY + 44]], lam('#ffffff', { map: mkTex(tin, [6, 1]), side: THREE.DoubleSide })); aw.castShadow = true;
   const bamboo = lam('#a58a55'); pole(fx(212), FY + 42, 0, fh(116), 1.6, bamboo); pole(fx(426), FY + 42, 0, fh(116), 1.6, bamboo);
   const wood = lam('#8a6038'); box(fx(244), FY + 58, fx(330), FY + 72, 17, 20, wood); for (const bx of [fx(250), fx(324)]) box(bx - 2, FY + 60, bx + 2, FY + 70, 0, 17, wood);
+  buildCrowd(fx, FY);
 
   /* the other three sides of the neighbourhood: only ever seen in first person */
   fpGroup = new THREE.Group(); world.add(fpGroup);
@@ -314,7 +315,7 @@ function initGL() {
   scene.add(new THREE.HemisphereLight(col('#eef2f6'), col('#9a8e7c'), 0.6));
   sun = new THREE.DirectionalLight(col('#ffe3b8'), 0.62);         // late-afternoon sun from behind the side camera's left shoulder
   sun.position.set(-560, 900, 520); sun.castShadow = true;
-  const sm = Math.min(4096, renderer.capabilities.maxTextureSize); sun.shadow.mapSize.set(sm, sm); sun.shadow.bias = -0.0006;
+  const sm = Math.min(LOWSPEC ? 2048 : 4096, renderer.capabilities.maxTextureSize); sun.shadow.mapSize.set(sm, sm); sun.shadow.bias = -0.0006;
   const sc = sun.shadow.camera; sc.left = -960; sc.right = 960; sc.top = 760; sc.bottom = -760; sc.near = 200; sc.far = 2800;
   scene.add(sun); scene.add(sun.target);
   buildScene();
@@ -371,12 +372,13 @@ function drawRadar() {
   g.fillStyle = '#ffffff'; g.beginPath(); g.arc(sx(ball.x), sy(ball.y), 2.6, 0, TAU); g.fill();
 }
 
-const roll = {};
+const roll = {}, touchUI = $('touchUI');
 function render(now, dt) {
   if (!renderer) return;
   const t = now / 1000;
   aimCamera(dt);
   P.forEach((p, i) => poseKid(kids[i], p, t, dt));
+  updateCrowd(dt, t);
   const b = ball, dx = b.x - lastBX, dy = b.y - lastBY, d = Math.hypot(dx, dy);
   if (d > 1e-4 && d < 80) {
     roll.q = roll.q || new THREE.Quaternion(); roll.axis = roll.axis || new THREE.Vector3();
@@ -390,6 +392,8 @@ function render(now, dt) {
   put(marks.opp, on && isNet(), P[TEAM[1 - myTeam].ctrl]);
   const rd = $('radar'), showRadar = S.phase !== 'menu'; if (rd.hidden === showRadar) rd.hidden = !showRadar;
   if (showRadar) drawRadar();
+  const showTouch = TOUCH.on && playing() && S.phase !== 'over';
+  if (touchUI.hidden === showTouch) { touchUI.hidden = !showTouch; if (!showTouch) stickRelease(); }
   renderer.render(scene, camera);
 }
 
@@ -410,7 +414,7 @@ function fit() {
   const hudH = Math.round(clamp(ah * 0.07, 36, 58));
   hud.style.height = hudH + 'px';
   view.w = Math.max(160, aw); view.h = Math.max(90, ah - hudH);
-  if (renderer) { renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.setSize(view.w, view.h, false); applyView(); }
+  if (renderer) { renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, LOWSPEC ? 1.5 : 2)); renderer.setSize(view.w, view.h, false); applyView(); }
 }
 addEventListener('resize', fit);
 if (window.ResizeObserver) new ResizeObserver(fit).observe(app);
@@ -431,16 +435,17 @@ function tick(t) {
 function boot(data) {
   try { if (!window.THREE) throw new Error('three.js did not load'); initGL(); }
   catch (e) { renderer = null; show('nogl', true); console.error(e); }
+  setTouchMode(MOBILE); updateSoundBtn();
   fit();
   if (data && (data.mode === 'cpu' || data.mode === 'fp') && Array.isArray(data.score)) { startMatch(data.mode, data.score); setPaused(true); }
   else toMenu();
   if (document.fonts && renderer) {
     const again = () => { paintFacade(facadeC); paintWall(wallC); facadeT.needsUpdate = wallT.needsUpdate = true; };
-    Promise.all([document.fonts.load('800 16px "Anek Bangla"', 'পাড়া'), document.fonts.load('400 16px "Galada"', 'পাড়া')]).then(again, () => {});
+    Promise.all([document.fonts.load('800 16px "Anek Bangla"', 'পাড়া'), document.fonts.load('400 16px "Galada"', 'পাড়া'), document.fonts.load('800 16px "Anek Latin"', 'TEA'), document.fonts.load('400 16px "Galada"', 'Cup')]).then(again, () => {});
   }
   requestAnimationFrame(tick);
 }
 try { window.claude?.hot?.snapshot?.(() => ({ mode: inMatch() && !isNet() ? S.mode : null, score: S.score.slice() })); } catch (e) {}
-window.__psf = { get sun() { return sun; }, S, P, TEAM, ball, AI, LEVELS, TUNE, CAM, NT, NP, FPI, setLevel, N, FP, step, F, kickBuf, passBuf, get level() { return level; }, get camera() { return camera; }, get myTeam() { return myTeam; } };
+window.__psf = { get sun() { return sun; }, CROWD, TOUCH, SND, goalSound, crowdReact, get renderer() { return renderer; }, MOBILE, S, P, TEAM, ball, AI, LEVELS, TUNE, CAM, NT, NP, FPI, setLevel, N, FP, step, F, kickBuf, passBuf, get level() { return level; }, get camera() { return camera; }, get myTeam() { return myTeam; } };
 if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.claude?.hot?.data ?? {});
 })();

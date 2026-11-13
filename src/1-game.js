@@ -132,6 +132,7 @@ function showGoal(t) { $('bannerWho').textContent = says(t, 'score'); show('bann
 function scored(t) {
   S.score[t]++; S.scorer = t; S.phase = 'goal'; S.timer = 1.7;
   showGoal(t); updateHud();
+  const happy = teamName(t) === 'You'; playGoal(happy); crowdReact('goal', happy);
 }
 function showOver() {
   const w = S.score[0] > S.score[1] ? 0 : 1;
@@ -195,6 +196,7 @@ function localMove() {                                     // side view: screen 
   if (!playing()) return IDLE;
   let x = (held('KeyD', 'ArrowRight') ? 1 : 0) - (held('KeyA', 'ArrowLeft') ? 1 : 0), y = (held('KeyS', 'ArrowDown') ? 1 : 0) - (held('KeyW', 'ArrowUp') ? 1 : 0);
   if (x && y) { x *= Math.SQRT1_2; y *= Math.SQRT1_2; }
+  if (TOUCH.x || TOUCH.y) { x += TOUCH.x; y += TOUCH.y; const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } }   // the thumbstick is analogue: a small push walks
   return { mx: x, my: y };
 }
 /* First person: one set of keys both moves and turns you. W runs the way you look and A/D steer, so turning while running carves a curve:
@@ -203,8 +205,8 @@ const TURN = { still: 3.4, sprint: 2.0, ball: 0.85, ramp: 9, carve: 0.22 };
 function fpMove(dt) {
   if (!playing()) { FP.turn = 0; return { mx: 0, my: 0, face: FP.yaw }; }
   const p = P[FPI], run = Math.min(1, Math.hypot(p.vx, p.vy) / MAX_SPEED);
-  const fwd = (held('KeyW', 'ArrowUp') ? 1 : 0) - (held('KeyS', 'ArrowDown') ? 1 : 0);
-  const steer = (held('KeyD', 'ArrowRight') ? 1 : 0) - (held('KeyA', 'ArrowLeft') ? 1 : 0), str = (keys.has('KeyE') ? 1 : 0) - (keys.has('KeyQ') ? 1 : 0);
+  const fwd = clamp((held('KeyW', 'ArrowUp') ? 1 : 0) - (held('KeyS', 'ArrowDown') ? 1 : 0) - TOUCH.y, -1, 1);   // thumbstick: push up to run, sideways to steer
+  const steer = clamp((held('KeyD', 'ArrowRight') ? 1 : 0) - (held('KeyA', 'ArrowLeft') ? 1 : 0) + TOUCH.x, -1, 1), str = (keys.has('KeyE') ? 1 : 0) - (keys.has('KeyQ') ? 1 : 0);
   const max = (TURN.still + (TURN.sprint - TURN.still) * run) * (ball.owner === FPI ? TURN.ball : 1);
   FP.turn += (steer * max - FP.turn) * Math.min(1, dt * TURN.ramp);       // angular speed eases towards what the keys ask for
   FP.yaw += FP.turn * dt;
@@ -215,11 +217,71 @@ function fpMove(dt) {
   return { mx, my, face: FP.yaw };
 }
 cv.addEventListener('click', () => {                         // optional mouse look
-  if (isFP() && playing() && document.pointerLockElement !== cv) { try { const r = cv.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {} }
+  if (isFP() && playing() && !TOUCH.on && document.pointerLockElement !== cv) { try { const r = cv.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {} }
 });
 document.addEventListener('mousemove', e => {
   if (document.pointerLockElement === cv && isFP() && playing()) { FP.yaw += e.movementX * 0.0026; FP.look = clamp(FP.look + e.movementY * 0.002, -0.6, 0.5); }
 });
+
+/* ───────────── touch controls: a thumbstick anywhere on the left half of the court, Shoot and Pass on the right ───────────── */
+const UA = navigator.userAgent || '', mq = q => !!(window.matchMedia && matchMedia(q).matches);
+const MOBILE = /Android|iPhone|iPad|iPod|Mobile|Silk|Kindle/i.test(UA) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(UA)) || (mq('(pointer: coarse)') && !mq('(any-pointer: fine)'));
+const LOWSPEC = MOBILE;                                      // phones get fewer pixels, softer shadows and a smaller crowd
+const TOUCH = { on: false, x: 0, y: 0, id: null, ox: 0, oy: 0 };
+function setTouchMode(on) { TOUCH.on = on; document.body.classList.toggle('touch-mode', on); updateFsBtn(); }
+const stickZone = $('stickZone'), stickBase = $('stickBase'), stickKnob = $('stickKnob');
+const stickR = () => stickBase.offsetWidth / 2 || 50;
+function stickRelease() { TOUCH.id = null; TOUCH.x = TOUCH.y = 0; stickBase.classList.remove('live'); stickBase.style.left = stickBase.style.top = ''; stickKnob.style.transform = ''; }
+function stickMove(e) {
+  if (e.pointerId !== TOUCH.id) return;
+  const r = stickZone.getBoundingClientRect(), R = stickR();
+  let dx = e.clientX - r.left - TOUCH.ox, dy = e.clientY - r.top - TOUCH.oy; const d = Math.hypot(dx, dy);
+  if (d > R) { dx *= R / d; dy *= R / d; }
+  stickKnob.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)';
+  const ux = dx / R, uy = dy / R, l = Math.hypot(ux, uy), k = l < 0.14 ? 0 : (l - 0.14) / 0.86 / l;   // a small dead zone in the middle
+  TOUCH.x = ux * k; TOUCH.y = uy * k;
+}
+stickZone.addEventListener('pointerdown', e => {
+  if (TOUCH.id !== null) return;
+  e.preventDefault(); setTouchMode(true);
+  TOUCH.id = e.pointerId; try { stickZone.setPointerCapture(e.pointerId); } catch (err) {}
+  const r = stickZone.getBoundingClientRect(), R = stickR();
+  TOUCH.ox = clamp(e.clientX - r.left, R + 6, Math.max(R + 6, r.width - R - 6)); TOUCH.oy = clamp(e.clientY - r.top, R + 6, Math.max(R + 6, r.height - R - 6));
+  stickBase.style.left = (TOUCH.ox - R) + 'px'; stickBase.style.top = (TOUCH.oy - R) + 'px'; stickBase.classList.add('live');
+  stickMove(e);
+});
+stickZone.addEventListener('pointermove', stickMove);
+for (const ev of ['pointerup', 'pointercancel']) stickZone.addEventListener(ev, e => { if (e.pointerId === TOUCH.id) stickRelease(); });
+function tapAction(kind) {
+  if (!playing()) return;
+  if (kind === 'shoot') { if (isGuest()) N.kSeq++; else kickBuf[myTeam] = 0.16; }
+  else { if (isGuest()) N.pSeq++; else passBuf[myTeam] = 0.16; }
+}
+for (const [id, kind] of [['tShoot', 'shoot'], ['tPass', 'pass']]) {
+  const b = $(id);
+  b.addEventListener('pointerdown', e => { e.preventDefault(); b.classList.add('down'); tapAction(kind); });
+  for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(ev, () => b.classList.remove('down'));
+  b.addEventListener('contextmenu', e => e.preventDefault());
+}
+addEventListener('touchstart', () => { if (!TOUCH.on) setTouchMode(true); }, { passive: true });   // a touchscreen laptop gets the buttons as soon as it is touched
+
+/* scoreboard buttons: sound on or off, and full screen on phones that allow it */
+function updateSoundBtn() { const b = $('soundBtn'); b.textContent = SND.on ? 'Sound on' : 'Sound off'; b.setAttribute('aria-pressed', String(SND.on)); }
+$('soundBtn').onclick = () => {
+  SND.on = !SND.on; try { localStorage.setItem('psf-sound', SND.on ? 'on' : 'off'); } catch (e) {}
+  if (SND.on) audioUnlock(); else if (SND.ctx) { try { SND.ctx.suspend(); } catch (e) {} }
+  updateSoundBtn();
+};
+const fsOK = () => !!(document.fullscreenEnabled && document.documentElement.requestFullscreen);
+function updateFsBtn() { const b = $('fsBtn'); b.hidden = !(TOUCH.on && fsOK()); b.textContent = document.fullscreenElement ? 'Exit full screen' : 'Full screen'; }
+$('fsBtn').onclick = () => {
+  try {
+    if (document.fullscreenElement) { const r = document.exitFullscreen(); if (r && r.catch) r.catch(() => {}); return; }
+    const r = document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+    if (r && r.then) r.then(() => { try { const o = screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape'); if (o && o.catch) o.catch(() => {}); } catch (e) {} }, () => {});
+  } catch (e) {}
+};
+document.addEventListener('fullscreenchange', updateFsBtn);
 
 /* ───────────── teams: who is on the ball ───────────── */
 function pickRoles(tm, dt) {

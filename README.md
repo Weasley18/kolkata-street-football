@@ -1,12 +1,12 @@
-# পাড়ার ফুটবল — Kolkata Street Football
+# Para Football — Kolkata Street Football
 
-A 3D three-a-side street football game set on a caged concrete court in a Kolkata neighbourhood (*para*): old houses with louvred shutters, a tea stall, a sweet shop, the para club, hand-painted wall writing in Bengali, a carrom board and a yellow taxi at the kerb.
+A 3D three-a-side street football game set on a caged concrete court in a Kolkata neighbourhood (*para*): old houses with louvred shutters, a tea stall, a sweet shop, the para club, hand-painted wall writing in English and Bengali, a carrom board and a yellow taxi at the kerb. Neighbours watch from behind the wall, the goals and the corners, and cheer when a goal goes in.
 
 It is a single web page. Everything is drawn in code: there are no image or model files.
 
 ## Play
 
-Open `index.html` in a modern desktop browser. It needs WebGL, a keyboard and an internet connection (three.js and the fonts load from CDNs).
+Open `index.html` in a modern browser, on a computer or a phone. It needs WebGL and an internet connection (three.js and the fonts load from CDNs).
 
 First team to 5 goals wins.
 
@@ -17,6 +17,10 @@ First team to 5 goals wins.
 | Pass to the teammate you are facing | `F` (or right `Shift`) |
 | Pause | `Esc` |
 | First person | `W` run the way you look, `S` brake, `A` `D` steer (turning and running together, so `W`+`A` carves a curve), `Q` `E` sidestep; click the court to look with the mouse. The arrow keys work like `W` `A` `S` `D` |
+
+On a phone or tablet, on-screen controls appear instead: drag anywhere on the left half of the court to move (a floating thumbstick; in first person, push up to run and sideways to steer), and tap **Shoot** or **Pass** on the right. The scoreboard has a **Full screen** button where the browser allows it, and the game is best played with the phone sideways.
+
+A goal plays a crowd cheer (or a groan when the CPU scores), made on the fly with the Web Audio API. **Sound on/off** in the scoreboard mutes it.
 
 ## Modes
 
@@ -38,12 +42,13 @@ The CPU opponent has three levels, Easy, Medium and Hard, chosen on the start sc
 index.html          the playable page (markup, styles, and the script below embedded)
 src/1-game.js       rules, input, physics, CPU players, online sync (see below)
 src/2-textures.js   procedural textures: shop fronts, the painted wall, the court
-src/3-scene.js      three.js scene, characters, animation, cameras, main loop
+src/3-crowd.js      the spectators and what they get up to, and the goal sound
+src/4-scene.js      three.js scene, characters, animation, cameras, main loop
 build.sh            re-embeds src/ into index.html after an edit
 ```
 
 The online two-player code is still in `src/1-game.js`, but the mode has no button on the start screen: it needs the connection that Claude gives its published artifacts, so it cannot work on an ordinary web host.
 
-The three source files are one script split for reading: they share a single scope and are joined in order by `build.sh`.
+The four source files are one script split for reading: they share a single scope and are joined in order by `build.sh`.
 
 Libraries: [three.js r128](https://threejs.org/) from cdnjs. Fonts: Anek Bangla, Anek Latin and Galada from Google Fonts.
