@@ -1,6 +1,6 @@
 # Para Football — Kolkata Street Football
 
-A 3D three-a-side street football game set on a caged concrete court in a Kolkata neighbourhood (*para*): old houses with louvred shutters, a tea stall, a sweet shop, the para club, hand-painted wall writing in English and Bengali, a carrom board and a yellow taxi at the kerb. Neighbours watch from behind the wall, the goals and the corners, and cheer when a goal goes in.
+A 3D three-a-side street football game set on a caged concrete court in a Kolkata neighbourhood (*para*): old houses with louvred shutters, a tea stall, a sweet shop, the para club, hand-painted wall writing in English and Bengali, a carrom board and a yellow taxi at the kerb. Neighbours watch from behind the wall, the goals and the corners, and cheer when a goal goes in, while old men on black roadster bicycles pedal past along the lane behind the wall and the road, turning their heads to follow the game.
 
 It is a single web page. Everything is drawn in code: there are no image or model files.
 
@@ -20,7 +20,7 @@ First team to 5 goals wins.
 
 On a phone or tablet, on-screen controls appear instead: drag anywhere on the left half of the court to move (a floating thumbstick; in first person, push up to run and sideways to steer), and tap **Shoot** or **Pass** on the right. The scoreboard has a **Full screen** button where the browser allows it, and the game is best played with the phone sideways.
 
-A goal plays a crowd cheer (or a groan when the CPU scores), made on the fly with the Web Audio API. **Sound on/off** in the scoreboard mutes it.
+All the sound is made on the fly with the Web Audio API, with no recordings: a constant background of the crowd chattering (and the odd laugh) and the road beyond (traffic passing, car and auto-rickshaw horns), bicycle bells as the cyclists ride by, and a crowd cheer on each goal (or a groan when the CPU scores). **Sound on/off** in the scoreboard mutes it all.
 
 ## Modes
 
@@ -42,7 +42,7 @@ The CPU opponent has three levels, Easy, Medium and Hard, chosen on the start sc
 index.html          the playable page (markup, styles, and the script below embedded)
 src/1-game.js       rules, input, physics, CPU players, online sync (see below)
 src/2-textures.js   procedural textures: shop fronts, the painted wall, the court
-src/3-crowd.js      the spectators and what they get up to, and the goal sound
+src/3-crowd.js      the spectators, the passing cyclists, and all the sound
 src/4-scene.js      three.js scene, characters, animation, cameras, main loop
 build.sh            re-embeds src/ into index.html after an edit
 ```

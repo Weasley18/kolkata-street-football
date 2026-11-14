@@ -245,13 +245,14 @@ function buildScene() {
   const bamboo = lam('#a58a55'); pole(fx(212), FY + 42, 0, fh(116), 1.6, bamboo); pole(fx(426), FY + 42, 0, fh(116), 1.6, bamboo);
   const wood = lam('#8a6038'); box(fx(244), FY + 58, fx(330), FY + 72, 17, 20, wood); for (const bx of [fx(250), fx(324)]) box(bx - 2, FY + 60, bx + 2, FY + 70, 0, 17, wood);
   buildCrowd(fx, FY);
+  buildCyclists();
 
   /* the other three sides of the neighbourhood: only ever seen in first person */
   fpGroup = new THREE.Group(); world.add(fpGroup);
   const plainC = mkCanvas(3440, FH * 2); paintPlainRow(plainC);
   const side = (w, ox) => { const t = mkTex(plainC); t.wrapS = THREE.RepeatWrapping; t.repeat.set(w / (1720 * SC), 1); t.offset.x = ox; return lam('#ffffff', { map: t }); };
   const near = new THREE.Mesh(new THREE.PlaneGeometry(1720 * SC, FH * SC), lam('#ffffff', { map: mkTex(plainC) })); near.rotation.y = Math.PI; add(near, fx(640), FH * SC / 2, F.B + 378, false, false, fpGroup);
-  const sideLen = F.B + 378 - FY, sideMid = (F.B + 378 + FY) / 2;
+  const sideLen = F.B + 35 - (F.T - 8), sideMid = (F.B + 35 + F.T - 8) / 2;   // the side rows stop short of the lane and the road, which carry on past them
   const lft = new THREE.Mesh(new THREE.PlaneGeometry(sideLen, FH * SC), side(sideLen, 0.08)); lft.rotation.y = Math.PI / 2; add(lft, F.L - 320, FH * SC / 2, sideMid, false, false, fpGroup);
   const rgt = new THREE.Mesh(new THREE.PlaneGeometry(sideLen, FH * SC), side(sideLen, 0.5)); rgt.rotation.y = -Math.PI / 2; add(rgt, F.R + 320, FH * SC / 2, sideMid, false, false, fpGroup);
   fpGroup.visible = false;
@@ -266,7 +267,7 @@ function buildScene() {
   }
 
   /* tree, hand pump, carrom board, taxi */
-  const tx = F.R + 170, ty = F.T - 22; pole(tx, ty, 0, 110, 10, lam('#4a3626'), 7);
+  const tx = F.R + 170, ty = F.T + 6;                                   // the tree stands clear of the lane behind the wall pole(tx, ty, 0, 110, 10, lam('#4a3626'), 7);
   const greens = ['#2b4428', '#34532e', '#3f6436', '#4a733c', '#557f42'].map(h => lam(h)), petal = lam('#d5522a');
   for (let i = 0; i < 14; i++) { const a = rng() * TAU, r = rng() * 44, h = 112 + rng() * 62, s = 24 + rng() * 20; add(new THREE.Mesh(new THREE.SphereGeometry(s, 12, 9), greens[(rng() * greens.length) | 0]), tx + Math.cos(a) * r, h, ty + Math.sin(a) * r * 0.8); }
   for (let i = 0; i < 40; i++) { const a = rng() * TAU, e = rng() * 1.2, r = 58; add(new THREE.Mesh(new THREE.SphereGeometry(2 + rng() * 2, 6, 5), petal), tx + Math.cos(a) * Math.sin(e + 0.3) * r, 146 + Math.cos(e) * 44, ty + Math.sin(a) * Math.sin(e + 0.3) * r * 0.8, false, false); }
@@ -446,6 +447,6 @@ function boot(data) {
   requestAnimationFrame(tick);
 }
 try { window.claude?.hot?.snapshot?.(() => ({ mode: inMatch() && !isNet() ? S.mode : null, score: S.score.slice() })); } catch (e) {}
-window.__psf = { get sun() { return sun; }, CROWD, TOUCH, SND, goalSound, crowdReact, get renderer() { return renderer; }, MOBILE, S, P, TEAM, ball, AI, LEVELS, TUNE, CAM, NT, NP, FPI, setLevel, N, FP, step, F, kickBuf, passBuf, get level() { return level; }, get camera() { return camera; }, get myTeam() { return myTeam; } };
+window.__psf = { get sun() { return sun; }, CROWD, CYC, AMB, ambBuild, ambTick, bell, updateCyclists, TOUCH, SND, goalSound, crowdReact, get renderer() { return renderer; }, MOBILE, S, P, TEAM, ball, AI, LEVELS, TUNE, CAM, NT, NP, FPI, setLevel, N, FP, step, F, kickBuf, passBuf, get level() { return level; }, get camera() { return camera; }, get myTeam() { return myTeam; } };
 if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.claude?.hot?.data ?? {});
 })();

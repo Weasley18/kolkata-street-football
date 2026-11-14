@@ -1,5 +1,6 @@
 
 /* ───────────── sound: a crowd cheer (or groan) and the ball hitting the net, made on the fly with Web Audio ───────────── */
+/* (the constant background of chatter and traffic, and the bicycle bells, are further down) */
 const SND = { ctx: null, on: true };
 try { SND.on = localStorage.getItem('psf-sound') !== 'off'; } catch (e) {}
 function audioUnlock() {                                   // browsers only allow sound after a tap or key press, so the first one wakes it
@@ -161,7 +162,7 @@ function buildFan(s) {
 /* where they stand: [x, y, facing, spot type, scale override]; types decide what they get up to */
 function crowdSpots(fx, FY) {
   const L = F.R - F.L, spots = [], wy = F.T - 24;
-  for (const u of [0.04, 0.09, 0.22, 0.33, 0.37, 0.52, 0.63, 0.67, 0.71, 0.88, 0.94]) spots.push({ x: F.L + u * L, y: wy + (u * 97 % 1) * 8 - 4, home: Math.PI / 2, type: 'wall', keep: [0.09, 0.33, 0.52, 0.67, 0.88, 0.94].includes(u) });
+  for (const u of [0.04, 0.185, 0.24, 0.33, 0.37, 0.52, 0.63, 0.67, 0.71, 0.88, 0.94]) spots.push({ x: F.L + u * L, y: wy + (u * 97 % 1) * 8 - 4, home: Math.PI / 2, type: 'wall', keep: [0.185, 0.33, 0.52, 0.67, 0.88, 0.94].includes(u) });   // none in front of the tea-stall bench, where the lane is narrowest
   for (const [x, y] of [[F.L - 70, F.cy - 150], [F.L - 82, F.cy + 40], [F.L - 66, F.cy + 120]]) spots.push({ x, y, home: 0, type: 'stand', zone: [F.L - 120, F.L - 58, F.cy - 190, F.cy + 190], keep: y !== F.cy + 40 });
   for (const [x, y] of [[F.R + 70, F.cy - 100], [F.R + 84, F.cy + 30], [F.R + 66, F.cy + 150]]) spots.push({ x, y, home: Math.PI, type: 'stand', zone: [F.R + 58, F.R + 120, F.cy - 110, F.cy + 200], keep: y !== F.cy + 30 });
   for (const [x, keep] of [[F.L - 44, true], [F.L - 14, false], [F.R + 16, true], [F.R + 46, false]]) spots.push({ x, y: F.B + 22, home: -Math.PI / 2, type: 'stand', zone: [x - 30, x + 30, F.B + 16, F.B + 26], keep });
@@ -272,4 +273,201 @@ function updateCrowd(dt, t) {
   CR.cool -= dt;
   if (CR.shot > 0 && (CR.shot -= dt) <= 0) { CR.shot = 0; CR.cool = 2.5; if (S.phase === 'play') crowdReact('ooh'); }
   for (const f of CROWD) poseFan(f, dt, t);
+  updateCyclists(dt, t);
+}
+
+/* ───────────── background sound: the crowd chattering and the road beyond, generated live ───────────── */
+/* People: eight talkers, each a buzzing voice sung through two vowel formants that change every syllable, speaking in phrases with
+   pauses between (and the odd laugh), over a low murmur. Road: a rumble, vehicles that swell past from one side to the other, and horns. */
+const VOWELS = [[750, 1200], [500, 1800], [330, 2200], [520, 900], [360, 820], [650, 1500]];
+function ambBuild(ctx, dest) {
+  const pan = (x) => { if (!ctx.createStereoPanner) return null; const p = ctx.createStereoPanner(); p.pan.value = x; return p; };
+  const master = ctx.createGain(); master.gain.value = 0.0001; master.connect(dest);
+  const st = { ctx, master, talkers: [], nextCar: 0, nextHorn: 0, nextMurmur: 0, rng: mul32(4242) }, R = st.rng;
+  /* the murmur under the voices, and the voices' bus */
+  const nb = noiseBuf(ctx), voices = ctx.createGain(), vlp = ctx.createBiquadFilter();
+  voices.gain.value = 1; vlp.type = 'lowpass'; vlp.frequency.value = 2600; voices.connect(vlp); vlp.connect(master);
+  const mur = ctx.createBufferSource(), mbf = ctx.createBiquadFilter(), mg = ctx.createGain();
+  mur.buffer = nb; mur.loop = true; mbf.type = 'bandpass'; mbf.frequency.value = 650; mbf.Q.value = 0.7; mg.gain.value = 0.045;
+  mur.connect(mbf); mbf.connect(mg); mg.connect(vlp); mur.start(); st.murmur = mg;
+  for (let i = 0; i < 8; i++) {
+    const o = ctx.createOscillator(), f1 = ctx.createBiquadFilter(), f2 = ctx.createBiquadFilter(), g = ctx.createGain(), p = pan(-0.85 + i * 0.24);
+    const male = i % 3 !== 2, f0 = male ? 105 + R() * 45 : 190 + R() * 60;
+    o.type = 'sawtooth'; o.frequency.value = f0; f1.type = f2.type = 'bandpass'; f1.Q.value = 5; f2.Q.value = 7; g.gain.value = 0.0001;
+    o.connect(f1); o.connect(f2); f1.connect(g); f2.connect(g); if (p) { g.connect(p); p.connect(voices); } else g.connect(voices);
+    o.start();
+    st.talkers.push({ o, f1, f2, g, f0, loud: 0.016 + R() * 0.02, next: ctx.currentTime + R() * 2, talking: R() < 0.5, left: 1 + R() * 3, laugh: false });
+  }
+  /* the road: a low rumble that never quite stops */
+  const rum = ctx.createBufferSource(), rlp = ctx.createBiquadFilter(), rg = ctx.createGain();
+  rum.buffer = nb; rum.loop = true; rlp.type = 'lowpass'; rlp.frequency.value = 170; rg.gain.value = 0.16;
+  rum.connect(rlp); rlp.connect(rg); rg.connect(master); rum.start(); st.rumble = rg;
+  st.road = master; st.pan = pan;
+  master.gain.setTargetAtTime(0.85, ctx.currentTime + 0.05, 1.2);          // fade in, to well under the goal cheer
+  st.nextCar = ctx.currentTime + 1.5; st.nextHorn = ctx.currentTime + 4 + R() * 6; st.nextMurmur = ctx.currentTime;
+  return st;
+}
+function ambTick(st, until) {
+  const ctx = st.ctx, R = st.rng;
+  for (const k of st.talkers) {                                            // syllables, scheduled a little ahead
+    while (k.next < until) {
+      const t = Math.max(k.next, ctx.currentTime);
+      if (!k.talking) { k.talking = true; k.left = 0.8 + R() * 3.2; k.laugh = R() < 0.07; k.next = t; continue; }
+      const dur = k.laugh ? 0.11 + R() * 0.04 : 0.1 + R() * 0.14, gap = k.laugh ? 0.05 : 0.02 + R() * 0.07;
+      const v = k.laugh ? VOWELS[0] : VOWELS[(R() * VOWELS.length) | 0], f0 = k.f0 * (k.laugh ? 1.5 : 0.9 + R() * 0.25);
+      k.o.frequency.setTargetAtTime(f0, t, 0.03);
+      k.f1.frequency.setTargetAtTime(v[0] * (0.92 + R() * 0.16), t, 0.02); k.f2.frequency.setTargetAtTime(v[1] * (0.92 + R() * 0.16), t, 0.02);
+      const peak = k.loud * (k.laugh ? 1.4 : 0.6 + R() * 0.6);
+      k.g.gain.setTargetAtTime(peak, t, 0.018); k.g.gain.setTargetAtTime(0.0001, t + dur, 0.025);
+      k.left -= dur + gap; k.next = t + dur + gap;
+      if (k.left <= 0) { k.talking = false; k.next += 0.5 + R() * 2.8; }  // a pause between phrases
+    }
+  }
+  while (st.nextMurmur < until) {                                          // the murmur drifts up and down
+    st.murmur.gain.setTargetAtTime(0.03 + R() * 0.035, Math.max(st.nextMurmur, ctx.currentTime), 1.2); st.nextMurmur += 2 + R() * 3;
+  }
+  while (st.nextCar < until) { const t = Math.max(st.nextCar, ctx.currentTime); passBy(st, t); st.nextCar = t + 4 + R() * 9; }
+  while (st.nextHorn < until) { const t = Math.max(st.nextHorn, ctx.currentTime); horn(st, t); st.nextHorn = t + 6 + R() * 16; }
+}
+/* a vehicle going past on the road: a swell of tyre noise (or a motorbike's engine) moving across from one side to the other */
+function passBy(st, t) {
+  const ctx = st.ctx, R = st.rng, dir = R() < 0.5 ? -1 : 1, d = 2.6 + R() * 2.4, g = ctx.createGain(), p = st.pan(-0.9 * dir);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09 + R() * 0.06, t + d * 0.5); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  if (p) { p.pan.setValueAtTime(-0.9 * dir, t); p.pan.linearRampToValueAtTime(0.9 * dir, t + d); g.connect(p); p.connect(st.road); } else g.connect(st.road);
+  if (R() < 0.35) {                                                        // a motorbike
+    const o = ctx.createOscillator(), lp = ctx.createBiquadFilter(), f = 62 + R() * 40;
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(f * 1.06, t); o.frequency.linearRampToValueAtTime(f * 0.94, t + d);
+    lp.type = 'lowpass'; lp.frequency.value = 700; o.connect(lp); lp.connect(g); o.start(t); o.stop(t + d + 0.1);
+  } else {
+    const n = ctx.createBufferSource(), bp = ctx.createBiquadFilter();
+    n.buffer = noiseBuf(ctx); bp.type = 'bandpass'; bp.Q.value = 0.9;
+    bp.frequency.setValueAtTime(260, t); bp.frequency.linearRampToValueAtTime(820, t + d * 0.5); bp.frequency.linearRampToValueAtTime(240, t + d);
+    n.connect(bp); bp.connect(g); n.start(t, R() * 2); n.stop(t + d + 0.1);
+  }
+}
+/* horns from the road: a car's double beep, an auto-rickshaw's rubber bulb, or a bus */
+function horn(st, t) {
+  const ctx = st.ctx, R = st.rng, kind = R(), p = st.pan(-0.8 + R() * 1.6), out = ctx.createGain();
+  out.gain.value = 0.55; if (p) { out.connect(p); p.connect(st.road); } else out.connect(st.road);
+  const beep = (at, len, freqs, type, vol, drop = 1) => {
+    const g = ctx.createGain(), lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400; lp.connect(g); g.connect(out);
+    g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(vol, at + 0.015); g.gain.setValueAtTime(vol, at + len - 0.03); g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+    for (const f of freqs) { const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, at); o.frequency.exponentialRampToValueAtTime(f * drop, at + len); o.connect(lp); o.start(at); o.stop(at + len + 0.05); }
+  };
+  if (kind < 0.45) { const n = R() < 0.5 ? 2 : 1; for (let i = 0; i < n; i++) beep(t + i * 0.28, 0.2 + R() * 0.1, [410, 515], 'square', 0.035); }
+  else if (kind < 0.8) { for (let i = 0; i < 2; i++) beep(t + i * 0.24, 0.17, [330], 'triangle', 0.09, 0.72); }      // paa-pom
+  else beep(t, 0.6 + R() * 0.4, [240, 302], 'sawtooth', 0.025);
+}
+/* a bicycle bell: two quick rings of a bright, slightly clashing metal tone */
+function bell(pan = 0, vol = 0.05) {
+  const ctx = SND.ctx; if (!SND.on || !ctx || ctx.state !== 'running' || !AMB.st) return;
+  const t = ctx.currentTime + 0.02, out = ctx.createGain(), p = AMB.st.pan(clamp(pan, -1, 1));
+  out.gain.value = vol; if (p) { out.connect(p); p.connect(AMB.st.master); } else out.connect(AMB.st.master);
+  for (let r = 0; r < 2; r++) for (const [f, a] of [[2650, 1], [3980, 0.6], [5300, 0.35]]) {
+    const o = ctx.createOscillator(), g = ctx.createGain(), at = t + r * 0.16;
+    o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(a, at + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, at + 0.42);
+    o.connect(g); g.connect(out); o.start(at); o.stop(at + 0.45);
+  }
+}
+const AMB = { st: null, timer: 0 };
+function ambStart() {
+  if (AMB.st || !SND.on || !SND.ctx) return;
+  try { AMB.st = ambBuild(SND.ctx, SND.ctx.destination); } catch (e) { AMB.st = null; return; }
+  AMB.timer = setInterval(() => { if (AMB.st && SND.ctx.state === 'running') { try { ambTick(AMB.st, SND.ctx.currentTime + 0.45); } catch (e) {} } }, 150);
+}
+addEventListener('pointerdown', () => ambStart(), { passive: true }); addEventListener('keydown', () => ambStart()); addEventListener('touchend', () => ambStart(), { passive: true });
+document.addEventListener('visibilitychange', () => {                     // silence when the tab is hidden, back when it returns
+  if (!SND.ctx) return;
+  try { if (document.hidden) SND.ctx.suspend(); else if (SND.on) SND.ctx.resume(); } catch (e) {}
+});
+
+/* ───────────── old men cycling past: along the lane behind the wall, and on the road ───────────── */
+const CYC = [];
+function tubeM(a, b, r, colr) {                                            // a tube from point a to point b, as a mergeParts piece
+  const d = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]), len = d.length();
+  const m = new THREE.Matrix4().compose(new THREE.Vector3((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2), new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()), new THREE.Vector3(1, 1, 1));
+  return [new THREE.CylinderGeometry(r, r, len, 6), m, colr];
+}
+/* a black roadster of the kind every para has: upright, rod brakes, a chain case, a carrier on the back (sometimes a sack, sometimes milk cans) */
+function buildBike(rng, frame) {
+  const g = new THREE.Group(), steel = '#9aa0a2', black = '#16171a', rubber = '#121212', WR = 17, RA = [0, WR, -27], FA = [0, WR, 28];
+  const mat = CR.mat, mk = (parts, parent = g) => { const m = new THREE.Mesh(mergeParts(parts), mat); m.castShadow = !LOWSPEC; parent.add(m); return m; };
+  const crank = [0, 15, -2], seat = [0, 45, -9], head = [0, 47, 20], headLo = [0, 37, 21.5];
+  const parts = [tubeM(crank, seat, 1.5, frame), tubeM([0, 44, -8], head, 1.5, frame), tubeM(crank, headLo, 1.6, frame),
+    tubeM([3, 15, -2], [3, WR, -27], 1.1, frame), tubeM([-3, 15, -2], [-3, WR, -27], 1.1, frame), tubeM([2.6, 43, -9], [3, WR, -27], 1, frame), tubeM([-2.6, 43, -9], [-3, WR, -27], 1, frame),
+    tubeM(head, headLo, 1.9, frame), tubeM([2.6, 38, 21.5], [2.4, WR, 28], 1.1, frame), tubeM([-2.6, 38, 21.5], [-2.4, WR, 28], 1.1, frame),
+    tubeM(head, [0, 54, 20], 1.1, steel), tubeM([-13, 54, 15], [13, 54, 15], 0.9, steel), tubeM([0, 54, 20], [0, 54, 15], 0.9, steel),
+    tubeM([-13, 54, 15], [-15, 53, 9], 0.9, steel), tubeM([13, 54, 15], [15, 53, 9], 0.9, steel),
+    [new THREE.CylinderGeometry(1.4, 1.4, 6, 8), MX(-15.5, 53, 7, Math.PI / 2, 0, 0), black], [new THREE.CylinderGeometry(1.4, 1.4, 6, 8), MX(15.5, 53, 7, Math.PI / 2, 0, 0), black],   // grips
+    [new THREE.SphereGeometry(1.7, 8, 6), MX(-9, 55.6, 15), '#c9ccc8'],                                                         // the bell
+    [new THREE.BoxGeometry(8, 3, 12), MX(0, 47.5, -11, 0.08, 0, 0), '#4a2c1c'], [new THREE.CylinderGeometry(0.8, 0.8, 4, 6), MX(0, 45.5, -10), steel],   // saddle
+    [new THREE.BoxGeometry(3.5, 7, 26), MX(4.4, 16, -14, -0.06, 0, 0), frame],                                                 // chain case
+    [new THREE.BoxGeometry(12, 1.4, 22), MX(0, 37, -29), steel], tubeM([5.5, 36, -38], [3, WR, -27], 0.7, steel), tubeM([-5.5, 36, -38], [-3, WR, -27], 0.7, steel),
+    [new THREE.TorusGeometry(WR + 2.2, 1.1, 4, 14, Math.PI * 0.9), MX(0, WR, -27, 0, Math.PI / 2, 0.15 * Math.PI), black],      // mudguards
+    [new THREE.TorusGeometry(WR + 2.2, 1.1, 4, 14, Math.PI * 0.75), MX(0, WR, 28, 0, Math.PI / 2, 0.12 * Math.PI), black]];
+  const load = rng();
+  if (load < 0.4) parts.push([new THREE.SphereGeometry(8, 10, 8), MX(0, 44, -30, 0, 0, 0, 1, 0.75, 1.35), '#b89a62']);          // a jute sack
+  else if (load < 0.7) for (const x of [-6.5, 6.5]) { parts.push([new THREE.CylinderGeometry(4.6, 5, 13, 12), MX(x, 44.5, -29), '#c3c7c6']); parts.push([new THREE.CylinderGeometry(2.4, 3.6, 3, 10), MX(x, 52.5, -29), '#c3c7c6']); }   // milk cans
+  mk(parts);
+  const wheel = (at) => {
+    const w = new THREE.Group(); w.position.set(at[0], at[1], at[2]); g.add(w);
+    const wp = [[new THREE.TorusGeometry(WR, 1.5, 6, 26), MX(0, 0, 0, 0, Math.PI / 2, 0), rubber], [new THREE.TorusGeometry(WR - 1.6, 0.5, 4, 26), MX(0, 0, 0, 0, Math.PI / 2, 0), steel],
+      [new THREE.CylinderGeometry(1.6, 1.6, 4.5, 8), MX(0, 0, 0, 0, 0, Math.PI / 2), steel]];
+    for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2; wp.push(tubeM([0, 0, 0], [0, Math.cos(a) * (WR - 1.6), Math.sin(a) * (WR - 1.6)], 0.22, steel)); }
+    mk(wp, w); return w;
+  };
+  const crk = new THREE.Group(); crk.position.set(0, 15, -2); g.add(crk);
+  mk([[new THREE.CylinderGeometry(6, 6, 0.9, 16), MX(4.4, 0, 0, 0, 0, Math.PI / 2), '#2a2a2c'], [new THREE.BoxGeometry(1.2, 1.6, 9), MX(5.8, 0, 4.5), steel], [new THREE.BoxGeometry(1.2, 1.6, 9), MX(-5.8, 0, -4.5), steel],
+    [new THREE.BoxGeometry(5, 1.2, 3), MX(8.6, 0, 9), black], [new THREE.BoxGeometry(5, 1.2, 3), MX(-8.6, 0, -9), black]], crk);
+  return { g, front: wheel(FA), rear: wheel(RA), crank: crk, WR };
+}
+/* routes: [x from, x to, y, which way]; the lane behind the wall runs between the shops and the crowd */
+function buildCyclists() {
+  const rng = mul32(9071), lanes = [{ y: F.T - 46, x0: -420, x1: 2120, lane: true }, { y: F.T - 46, x0: -420, x1: 2120, lane: true }, { y: F.B + 225, x0: -620, x1: 2320 }, { y: F.B + 300, x0: -620, x1: 2320 }];
+  for (const [i, r] of lanes.entries()) {
+    if (LOWSPEC && (i === 1 || i === 3)) continue;
+    const rig = new THREE.Group(); rig.visible = false; world.add(rig);
+    const bike = buildBike(rng, ['#16171a', '#16171a', '#1f3a2c', '#4a1f22'][i % 4]); rig.add(bike.g);
+    const s = fanSpec(rng, rng() < 0.6 ? 'old' : 'lungi');
+    s.skirt = null; s.hem = null; s.bottom = s.kind === 'old' ? '#e9e5da' : '#3a3530'; s.cup = s.phone = false; s.scale = 0.93; s.mous = true;   // trousers for pedalling
+    if (s.kind === 'lungi') { s.style = rng() < 0.5 ? 'bald' : 'short'; s.hair = '#bdb8ae'; }
+    const f = buildFan(s); world.remove(f.root); rig.add(f.root);
+    f.root.position.set(0, 0, -9);
+    CYC.push({ rig, bike, f, route: r, x: 0, dir: 1, v: 0, wait: 2 + i * 5 + rng() * 6, crank: rng() * 6, rolled: 0, rang: false, look: 0, rng });
+  }
+}
+/* two-bone leg reach: put the foot (ankle) on the pedal; works in the rider's own units */
+function legTo(thigh, knee, dy, dz) {
+  const a = 26.5, b = 28, L = Math.min(Math.hypot(dy, dz), a + b - 0.5), al = Math.atan2(-dz, -dy);
+  const be = Math.acos(clamp((a * a + L * L - b * b) / (2 * a * L), -1, 1)), kn = Math.PI - Math.acos(clamp((a * a + b * b - L * L) / (2 * a * b), -1, 1));
+  thigh.rotation.x = al - be; knee.rotation.x = kn;
+}
+function updateCyclists(dt, t) {
+  for (const c of CYC) {
+    const r = c.route;
+    if (!c.rig.visible) {
+      if ((c.wait -= dt) > 0) continue;
+      c.dir = c.rng() < 0.5 ? 1 : -1; c.x = c.dir > 0 ? r.x0 : r.x1; c.v = 75 + c.rng() * 45; c.rang = c.rng() < 0.35; c.rig.visible = true;   // only some ring their bell
+    }
+    c.x += c.dir * c.v * dt;
+    const wob = Math.sin(t * 1.3 + c.crank) * 0.035;                       // the slight weave of an unhurried rider
+    c.rig.position.set(c.x, 0, r.y + Math.sin(t * 0.4 + c.crank) * 3); c.rig.rotation.y = c.dir > 0 ? Math.PI / 2 : -Math.PI / 2; c.rig.rotation.z = wob * 0.5;
+    const roll = c.v * dt / c.bike.WR; c.bike.front.rotation.x += roll; c.bike.rear.rotation.x += roll; c.crank += roll / 2.4; c.bike.crank.rotation.x = c.crank;
+    /* the rider: hands on the bars, a slight stoop, feet on the pedals, and a long look at the game as he passes */
+    const f = c.f, s = f.s.scale, k = 1 / s;
+    f.body.position.y = 52.5 * k - 58; f.torso.rotation.x = 0.2; f.hips.rotation.x = 0;
+    f.armL.rotation.x = f.armR.rotation.x = -0.95; f.armL.rotation.z = 0.12; f.armR.rotation.z = -0.12; f.elbL.rotation.x = f.elbR.rotation.x = -0.35;
+    for (const [side, th, kn, ph] of [[1, f.legL, f.kneeL, 0], [-1, f.legR, f.kneeR, Math.PI]]) {
+      const a = c.crank + ph, pz = -2 + 9 * Math.cos(a), py = 15 - 9 * Math.sin(a);                   // the pedal, in bike units
+      const hipY = (f.body.position.y + 58 - 2) * s, hipZ = -9;                                      // the hip joint, in bike units
+      legTo(th, kn, (py + 2.5 - hipY) * k, (pz - 2 - hipZ) * k);   // ankle just behind the pedal, so the ball of the foot is on it
+    }
+    const near = c.x > F.L - 100 && c.x < F.R + 100;
+    let want = 0;
+    if (near) { const toBall = Math.atan2(ball.y - r.y, ball.x - c.x), facing = c.dir > 0 ? 0 : Math.PI; want = clamp(-wrapA(toBall - facing), -1.2, 1.2); }
+    c.look += (want - c.look) * Math.min(1, dt * 2);
+    f.head.rotation.y = c.look; f.head.rotation.x = 0.05;
+    if (c.rang && Math.abs(c.x - F.cx) < 500) { c.rang = false; bell(clamp((c.x - F.cx) / 900, -1, 1), r.lane ? 0.05 : 0.035); }
+    if ((c.dir > 0 && c.x > r.x1) || (c.dir < 0 && c.x < r.x0)) { c.rig.visible = false; c.wait = 6 + c.rng() * 16; }
+  }
 }

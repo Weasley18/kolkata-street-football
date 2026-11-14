@@ -269,7 +269,7 @@ addEventListener('touchstart', () => { if (!TOUCH.on) setTouchMode(true); }, { p
 function updateSoundBtn() { const b = $('soundBtn'); b.textContent = SND.on ? 'Sound on' : 'Sound off'; b.setAttribute('aria-pressed', String(SND.on)); }
 $('soundBtn').onclick = () => {
   SND.on = !SND.on; try { localStorage.setItem('psf-sound', SND.on ? 'on' : 'off'); } catch (e) {}
-  if (SND.on) audioUnlock(); else if (SND.ctx) { try { SND.ctx.suspend(); } catch (e) {} }
+  if (SND.on) { audioUnlock(); ambStart(); } else if (SND.ctx) { try { SND.ctx.suspend(); } catch (e) {} }
   updateSoundBtn();
 };
 const fsOK = () => !!(document.fullscreenEnabled && document.documentElement.requestFullscreen);
